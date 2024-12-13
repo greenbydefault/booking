@@ -1,0 +1,4 @@
+/src/config.js
+/backend/credentials.json
+/backend/node_modules/
+.env
