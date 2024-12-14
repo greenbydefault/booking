@@ -1,0 +1,35 @@
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+}
+
+#calendar {
+    display: flex;
+    justify-content: space-between;
+    padding: 20px;
+}
+
+.day {
+    width: 18%;
+    text-align: center;
+}
+
+.slot {
+    background-color: green;
+    color: white;
+    margin: 5px 0;
+    padding: 10px;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.slot.unavailable {
+    background-color: red;
+    cursor: not-allowed;
+}
+
+#booking-summary {
+    margin: 20px;
+    font-size: 1.2em;
+}
