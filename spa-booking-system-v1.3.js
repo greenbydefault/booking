@@ -9,30 +9,41 @@
         return;
     }
 
+    let currentStep = 1;
+    let selectedDate = "";
+    let selectedTime = [];
+    let selectedPackage = "";
+
+    // Render Navigation Buttons
+    function renderNavigationButtons(step) {
+        return `
+            <div class="navigation-buttons">
+                ${step > 1 ? '<button id="prev-step">Back</button>' : ""}
+                ${step < 4 ? '<button id="next-step">Next</button>' : ""}
+            </div>
+        `;
+    }
+
     // Render Step 1: Date Selection
     function renderDateSelection() {
+        currentStep = 1;
         const dateHtml = `
             <div id="step-1">
                 <h2>Select Date</h2>
-                <input type="date" id="booking-date" required>
-                <button id="next-to-time">Next</button>
+                <input type="date" id="booking-date" value="${selectedDate}" required>
+                ${renderNavigationButtons(currentStep)}
             </div>
         `;
         bookingContainer.innerHTML = dateHtml;
-        document.querySelector("#next-to-time").addEventListener("click", handleDateSelection);
-    }
-
-    function handleDateSelection() {
-        const dateInput = document.querySelector("#booking-date").value;
-        if (!dateInput) {
-            alert("Please select a date.");
-            return;
-        }
-        renderTimeSelection();
+        document.querySelector("#booking-date").addEventListener("change", (e) => {
+            selectedDate = e.target.value;
+        });
+        setupNavigation();
     }
 
     // Render Step 2: Time Selection
     function renderTimeSelection() {
+        currentStep = 2;
         const timeSlots = [
             "08:00", "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00",
         ];
@@ -42,21 +53,19 @@
                 <div class="time-slots">
                     ${timeSlots
                         .map(
-                            (time) => `<button class="time-slot" data-time="${time}">${time} o'clock</button>`
+                            (time) => `<button class="time-slot ${selectedTime.includes(time) ? "selected" : ""}" data-time="${time}">${time} o'clock</button>`
                         )
                         .join("")}
                 </div>
-                <button id="next-to-packages">Next</button>
+                ${renderNavigationButtons(currentStep)}
             </div>
         `;
         bookingContainer.innerHTML = timeHtml;
         document.querySelectorAll(".time-slot").forEach((slot) => {
             slot.addEventListener("click", handleTimeSelection);
         });
-        document.querySelector("#next-to-packages").addEventListener("click", renderPackageSelection);
+        setupNavigation();
     }
-
-    let selectedTime = [];
 
     function handleTimeSelection(e) {
         const time = e.target.getAttribute("data-time");
@@ -71,49 +80,78 @@
 
     // Render Step 3: Package Selection
     function renderPackageSelection() {
+        currentStep = 3;
         const packageHtml = `
             <div id="step-3">
                 <h2>Select Package</h2>
                 <label>
-                    <input type="radio" name="package" value="Basic" required> Basic Package
+                    <input type="radio" name="package" value="Basic" ${selectedPackage === "Basic" ? "checked" : ""}> Basic Package
                 </label>
                 <label>
-                    <input type="radio" name="package" value="Premium"> Premium Package
+                    <input type="radio" name="package" value="Premium" ${selectedPackage === "Premium" ? "checked" : ""}> Premium Package
                 </label>
                 <label>
-                    <input type="radio" name="package" value="Luxury"> Luxury Package
+                    <input type="radio" name="package" value="Luxury" ${selectedPackage === "Luxury" ? "checked" : ""}> Luxury Package
                 </label>
-                <button id="next-to-overview">Next</button>
+                ${renderNavigationButtons(currentStep)}
             </div>
         `;
         bookingContainer.innerHTML = packageHtml;
-        document.querySelector("#next-to-overview").addEventListener("click", renderOverview);
+        document.querySelectorAll("input[name='package']").forEach((radio) => {
+            radio.addEventListener("change", (e) => {
+                selectedPackage = e.target.value;
+            });
+        });
+        setupNavigation();
     }
 
-    let selectedPackage = "";
-
+    // Render Step 4: Overview
     function renderOverview() {
-        const selectedPackage = document.querySelector("input[name='package']:checked").value;
-        if (!selectedPackage) {
-            alert("Please select a package.");
-            return;
-        }
+        currentStep = 4;
         const overviewHtml = `
             <div id="step-4">
                 <h2>Booking Overview</h2>
-                <p>Date: ${document.querySelector("#booking-date").value}</p>
+                <p>Date: ${selectedDate}</p>
                 <p>Time: ${selectedTime.join(", ")}</p>
                 <p>Package: ${selectedPackage}</p>
                 <button id="confirm-booking">Confirm Booking</button>
+                ${renderNavigationButtons(currentStep)}
             </div>
         `;
         bookingContainer.innerHTML = overviewHtml;
         document.querySelector("#confirm-booking").addEventListener("click", confirmBooking);
+        setupNavigation();
     }
 
+    // Confirm Booking
     function confirmBooking() {
         alert("Booking confirmed! Details have been sent to your email.");
+        resetBooking();
+    }
+
+    function resetBooking() {
+        selectedDate = "";
+        selectedTime = [];
+        selectedPackage = "";
         renderDateSelection();
+    }
+
+    // Setup Navigation
+    function setupNavigation() {
+        if (document.querySelector("#prev-step")) {
+            document.querySelector("#prev-step").addEventListener("click", () => {
+                if (currentStep === 2) renderDateSelection();
+                else if (currentStep === 3) renderTimeSelection();
+                else if (currentStep === 4) renderPackageSelection();
+            });
+        }
+        if (document.querySelector("#next-step")) {
+            document.querySelector("#next-step").addEventListener("click", () => {
+                if (currentStep === 1) renderTimeSelection();
+                else if (currentStep === 2) renderPackageSelection();
+                else if (currentStep === 3) renderOverview();
+            });
+        }
     }
 
     // Start the booking system
