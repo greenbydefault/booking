@@ -2,7 +2,7 @@
 
 // Initialize Booking System
 (function () {
-    const bookingContainerId = "#your-booking-id"; // Replace with your div id
+    const bookingContainerId = "#spa-calendar"; // Replace with your div id
     const bookingContainer = document.querySelector(bookingContainerId);
     if (!bookingContainer) {
         console.error("Booking container not found");
