@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Dashboard</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<h1>Dashboard</h1>
+<form action="/logout" method="post" style="text-align:right">
+  <button type="submit">Logout</button>
+</form>
+<form action="/products" method="post">
+  <input type="text" name="name" placeholder="Product name" required>
+  <input type="number" name="price" placeholder="Price" required>
+  <button type="submit">Add Product</button>
+</form>
+<h2>Your Products</h2>
+<ul id="product-list"></ul>
+
+<h2>Embed Script</h2>
+<p>Use the following snippet in Webflow:</p>
+<pre><code>&lt;script src="/template.js" data-product="PRODUCT_ID"&gt;&lt;/script&gt;
+&lt;div data-booking-product&gt;&lt;/div&gt;</code></pre>
+
+<script>
+fetch('/product-list')
+  .then(res => res.json())
+  .then(list => {
+    const ul = document.getElementById('product-list');
+    list.forEach(p => {
+      const li = document.createElement('li');
+      li.textContent = p.name + ' - ' + p.price + '€ (id: ' + p.id + ')';
+      ul.appendChild(li);
+    });
+  });
+</script>
+</body>
+</html>

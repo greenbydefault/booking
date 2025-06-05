@@ -4,6 +4,19 @@ body {
     padding: 0;
 }
 
+form {
+    margin: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    max-width: 300px;
+}
+
+input, button {
+    padding: 0.5rem;
+    font-size: 1rem;
+}
+
 #calendar {
     display: flex;
     justify-content: space-between;
