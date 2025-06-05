@@ -1,20 +1,24 @@
+require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
 const bodyParser = require('body-parser');
-const jsonfile = require('jsonfile');
+const bcrypt = require('bcrypt');
+const { createClient } = require('@supabase/supabase-js');
 const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-const USERS_FILE = path.join(__dirname, '..', 'data', 'users.json');
-const PRODUCTS_FILE = path.join(__dirname, '..', 'data', 'products.json');
+const supabase = createClient(
+  process.env.SUPABASE_URL,
+  process.env.SUPABASE_KEY
+);
 
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, '..')));
 app.use(
   session({
-    secret: 'your-secret-key',
+    secret: process.env.SESSION_SECRET || 'dev-secret',
     resave: false,
     saveUninitialized: false,
   })
@@ -24,28 +28,53 @@ app.get('/', (req, res) => {
   res.redirect('/login.html');
 });
 
-function loadUsers() {
-  try {
-    return jsonfile.readFileSync(USERS_FILE);
-  } catch {
-    return [];
-  }
+async function getUserByUsername(username) {
+  const { data, error } = await supabase
+    .from('users')
+    .select('*')
+    .eq('username', username)
+    .single();
+  if (error) return null;
+  return data;
 }
 
-function saveUsers(users) {
-  jsonfile.writeFileSync(USERS_FILE, users, { spaces: 2 });
+async function createUser(username, passwordHash) {
+  const { error, data } = await supabase
+    .from('users')
+    .insert({ username, password_hash: passwordHash })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
 }
 
-function loadProducts() {
-  try {
-    return jsonfile.readFileSync(PRODUCTS_FILE);
-  } catch {
-    return [];
-  }
+async function createProduct(userId, name, price) {
+  const { error, data } = await supabase
+    .from('products')
+    .insert({ user_id: userId, name, price })
+    .select()
+    .single();
+  if (error) throw error;
+  return data;
 }
 
-function saveProducts(products) {
-  jsonfile.writeFileSync(PRODUCTS_FILE, products, { spaces: 2 });
+async function getProductsForUser(userId) {
+  const { data, error } = await supabase
+    .from('products')
+    .select('id,name,price')
+    .eq('user_id', userId);
+  if (error) return [];
+  return data;
+}
+
+async function getProductById(id) {
+  const { data, error } = await supabase
+    .from('products')
+    .select('id,name,price')
+    .eq('id', id)
+    .single();
+  if (error) return null;
+  return data;
 }
 
 function authRequired(req, res, next) {
@@ -59,26 +88,29 @@ app.get('/dashboard', authRequired, (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'dashboard.html'));
 });
 
-app.post('/register', (req, res) => {
+app.post('/register', async (req, res) => {
   const { username, password } = req.body;
-  const users = loadUsers();
-  if (users.find(u => u.username === username)) {
+  const existing = await getUserByUsername(username);
+  if (existing) {
     return res.status(400).send('User already exists');
   }
-  users.push({ username, password });
-  saveUsers(users);
-  req.session.user = { username };
+  const passwordHash = await bcrypt.hash(password, 10);
+  const user = await createUser(username, passwordHash);
+  req.session.user = { id: user.id, username };
   res.redirect('/dashboard');
 });
 
-app.post('/login', (req, res) => {
+app.post('/login', async (req, res) => {
   const { username, password } = req.body;
-  const users = loadUsers();
-  const user = users.find(u => u.username === username && u.password === password);
+  const user = await getUserByUsername(username);
   if (!user) {
     return res.status(401).send('Invalid credentials');
   }
-  req.session.user = { username };
+  const match = await bcrypt.compare(password, user.password_hash);
+  if (!match) {
+    return res.status(401).send('Invalid credentials');
+  }
+  req.session.user = { id: user.id, username };
   res.redirect('/dashboard');
 });
 
@@ -88,17 +120,18 @@ app.post('/logout', (req, res) => {
   });
 });
 
-app.post('/products', authRequired, (req, res) => {
+app.post('/products', authRequired, async (req, res) => {
   const { name, price } = req.body;
-  const products = loadProducts();
-  const product = { id: Date.now().toString(), name, price };
-  products.push(product);
-  saveProducts(products);
-  res.redirect('/dashboard');
+  try {
+    await createProduct(req.session.user.id, name, price);
+    res.redirect('/dashboard');
+  } catch (e) {
+    res.status(500).send('Error creating product');
+  }
 });
 
-app.get('/product-list', authRequired, (req, res) => {
-  const products = loadProducts();
+app.get('/product-list', authRequired, async (req, res) => {
+  const products = await getProductsForUser(req.session.user.id);
   res.json(products);
 });
 
@@ -117,9 +150,8 @@ app.get('/template.js', (req, res) => {
   `);
 });
 
-app.get('/product/:id', (req, res) => {
-  const products = loadProducts();
-  const product = products.find(p => p.id === req.params.id);
+app.get('/product/:id', async (req, res) => {
+  const product = await getProductById(req.params.id);
   if (!product) return res.status(404).json({ error: 'Not found' });
   res.json(product);
 });
